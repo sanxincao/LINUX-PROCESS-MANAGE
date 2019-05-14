@@ -1,14 +1,12 @@
-//sender.c
+//receiver.c
 #include "common.h"
-#include <stdio.h>
-
 //key
 key_t key;
 
 //shared memory
 int shmid;
 char * shmptr;
-char input[SHM_SIZE];
+char result[SHM_SIZE];
 
 //semaphore 
 sem_t * full;
@@ -26,14 +24,12 @@ void Init()
     mutex = sem_open(MUTEX_NAME,O_CREAT);
 }
 
-void SaveMessage()
+void ReadMessage()
 {
-
+    P(full);
     P(mutex);                       
-    strcpy(shmptr,input);
+    strcpy(result,shmptr);
     V(mutex);
-
-    V(full);
 }
 
 int main(int argc, char const *argv[])
@@ -43,11 +39,10 @@ int main(int argc, char const *argv[])
     Init();
 
     /*waiting for user to input message*/
+    ReadMessage();
 
-    fgets(input, 1024, stdin);              //input message from shell 
-
-    SaveMessage();
-
-    printf("Sender:  Process End\n");
+    printf("Receiver : message is %s\n",result);
+    SemDestroy();
+    printf("Receiver :  Process End \n");
     return 0;
 }
