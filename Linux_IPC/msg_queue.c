@@ -36,7 +36,7 @@ sem_t mutex;
 //pthread_t 声明线程，类似于pid_t
 pthread_t write_pid; 
 pthread_t read_pid;
-
+pthread_t write_pid2; 
 /*
 IPC对象键值，每个IPC对象都关联着一个唯一的长整型的键值，
 不同进程通过相同相同的键值可访问到同一个IPC对象。
@@ -49,6 +49,7 @@ int msgid;
 
 struct msgbuf msg;
 
+int overflag=0;
 //初始化
 void Init()
 {
@@ -102,24 +103,50 @@ void * ReadProcess(void *arg)
         msgrcv(msgid,&msg,sizeof(msgbuf),1,0);//接收类型为1的消息（即mtype=1）
 
         //如果接受到"end"
-        if(strcmp(msg.mtext,"end") == 0)
+        if(strcmp(msg.mtext,"end1") == 0)
         {
             msg.mtype = 2;
-            strncpy(msg.mtext,"over",BUF_SIZE);
+            strncpy(msg.mtext,"over1",BUF_SIZE);
             //msgsnd用于向标识符为msqid的消息队列发送一个消息（即发送over）
             msgsnd(msgid,&msg,sizeof(msgbuf),0);
+            overflag=overflag+1;
             sem_post(&empty);
-        sem_post(&mutex);
-            break;
+            sem_post(&mutex);
+            
         }
+        else if(strcmp(msg.mtext,"end2") == 0)
+        {
+            msg.mtype = 2;
+            strncpy(msg.mtext,"over2",BUF_SIZE);
+            //msgsnd用于向标识符为msqid的消息队列发送一个消息（即发送over）
+            msgsnd(msgid,&msg,sizeof(msgbuf),0);
+            overflag=overflag+1;
+            sem_post(&empty);
+            sem_post(&mutex);
+        }
+        else if(overflag==2)
+        {
+            //Remove Message Queue
+              if( msgctl (msgid,IPC_RMID,0) == -1)
+         {
+                 fprintf(stderr, "Remove Message Queue Error%s\n", strerror(errno));
+                  exit(EXIT_FAILURE);
+         }
+            sem_post(&empty);
+            sem_post(&mutex);
+            exit(EXIT_SUCCESS);
+        }
+        else
+        {
         //print message
         printf("Receive:  %s\n\n",msg.mtext);
 
         //sem_post增加信号量的值，当有线程阻塞在这个信号量时，该函数会使其中一个线程不在阻塞
         sem_post(&empty);
         sem_post(&mutex);
+        }
     }
-    exit(EXIT_SUCCESS);
+    //exit(EXIT_SUCCESS);
 }
 
 void * WriteProcess(void *arg)
@@ -132,7 +159,45 @@ void * WriteProcess(void *arg)
         sem_wait(&empty);
         sem_wait(&mutex);
         sleep(0.1);
-        printf("Sent: Please Input the message you want to send.\n");
+        printf("Sent1: Please Input the message you want to send.\n");
+        scanf("%s",input);
+        if(strcmp(input,"exit") == 0)
+        {
+            strncpy(msg.mtext,"end1",BUF_SIZE);
+            msgsnd(msgid,&msg,sizeof(msgbuf),0);
+            sem_post(&full);
+            sem_post(&mutex);
+            break; //输出exit后，转化为end，然后跳出while循环
+        }
+        strncpy(msg.mtext,input,BUF_SIZE);
+        msgsnd(msgid,&msg,sizeof(msgbuf),0);
+        printf("Sent1: %s\n",msg.mtext );
+        //semaphore
+        sem_post(&full);
+        sem_post(&mutex);
+    }
+
+
+    // Clear Node
+    memset(&msg,'\0',sizeof(msgbuf));
+    // Block ,waiting for msg with type = 2
+    msgrcv(msgid,&msg,sizeof(msgbuf),2,0);
+    printf("Sent1:%s\n",msg.mtext );
+    pthread_exit(NULL);
+    
+}
+
+void * WriteProcess2(void *arg)
+{   
+    char input[50];
+    msgbuf msg;
+    msg.mtype = 1;
+    while (TRUE)
+    {
+        sem_wait(&empty);
+        sem_wait(&mutex);
+        sleep(0.1);
+        printf("Sent2: Please Input the message you want to send.\n");
         scanf("%s",input);
         if(strcmp(input,"exit") == 0)
         {
@@ -144,35 +209,31 @@ void * WriteProcess(void *arg)
         }
         strncpy(msg.mtext,input,BUF_SIZE);
         msgsnd(msgid,&msg,sizeof(msgbuf),0);
-        printf("Sent: %s\n",msg.mtext );
+        printf("Sent2: %s\n",msg.mtext );
         //semaphore
         sem_post(&full);
         sem_post(&mutex);
     }
 
 
-
     // Clear Node
     memset(&msg,'\0',sizeof(msgbuf));
     // Block ,waiting for msg with type = 2
     msgrcv(msgid,&msg,sizeof(msgbuf),2,0);
-    printf("Sent:%s\n",msg.mtext );
+    printf("Sent2:%s\n",msg.mtext );
 
-    //Remove Message Queue
-    if( msgctl (msgid,IPC_RMID,0) == -1)
-    {
-        fprintf(stderr, "Remove Message Queue Error%s\n", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-    exit(EXIT_SUCCESS);
+    
+    pthread_exit(NULL);
 }
 
 int main()
 {
     Init();
     pthread_create(&write_pid,NULL,WriteProcess,NULL);
+    pthread_create(&write_pid2,NULL,WriteProcess2,NULL);
     pthread_create(&read_pid,NULL,ReadProcess,NULL);
     //waiting for the thread end
+    pthread_join(write_pid2,NULL);
     pthread_join(write_pid,NULL);
     pthread_join(read_pid,NULL);
     printf("Main Function End...\n");
