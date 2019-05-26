@@ -4,7 +4,7 @@
 
 //key
 key_t key;
-
+//UNSAFE CODE 
 //shared memory
 int shmid;
 char * shmptr;
@@ -13,7 +13,7 @@ char input[SHM_SIZE];
 //semaphore 
 sem_t * full;
 sem_t * mutex;
-                            //semaphore
+//semaphore
 
 
 void Init()
