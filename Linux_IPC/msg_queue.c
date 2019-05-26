@@ -151,7 +151,6 @@ void * WriteProcess(void *arg)
     }
 
 
-
     // Clear Node
     memset(&msg,'\0',sizeof(msgbuf));
     // Block ,waiting for msg with type = 2
