@@ -201,7 +201,7 @@ void * WriteProcess2(void *arg)
         scanf("%s",input);
         if(strcmp(input,"exit") == 0)
         {
-            strncpy(msg.mtext,"end",BUF_SIZE);
+            strncpy(msg.mtext,"end2",BUF_SIZE);
             msgsnd(msgid,&msg,sizeof(msgbuf),0);
             sem_post(&full);
             sem_post(&mutex);
