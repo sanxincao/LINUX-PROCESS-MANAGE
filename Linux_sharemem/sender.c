@@ -16,9 +16,10 @@ int main(int argc, char const* argv[])
 	char* shmptr;
 	key_t key = KEY_NUM;
 	char input[SHM_SIZE];
-	sem_t* mutex = sem_open(MUTEX_NAME, O_CREAT, 0644, 0);
+	//创建信号量，信号量在p89 0644是该用户可用的意思
+	sem_t* mutex = sem_open(MUTEX_NAME, O_CREAT, 0644, 0);//
 	sem_t* full = sem_open(FULL_NAME, O_CREAT, 0644, 0);
-
+	//书上通信p125
 	shmid = shmget(key, SHM_SIZE, IPC_CREAT | 0644);
 	shmptr = shmat(shmid, NULL, 0);
 	
